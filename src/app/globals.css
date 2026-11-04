@@ -67,9 +67,9 @@ nav a.active::after { content: ""; position: absolute; left: 0; right: 0; bottom
 .category-row a { display: grid; place-items: center; gap: 9px; width: 116px; font-size: 12px; }
 .category-row img, .top-row img { width: 94px; height: 94px; border: 2px solid #d8b98f; border-radius: 50%; object-fit: cover; }
 .top-products { margin-top: 42px; }
-.top-row { display: flex; gap: 14px; overflow-x: auto; padding: 0 0 8px; scrollbar-width: none; }
+.top-row { display: flex; min-height: 92px; align-items: flex-start; gap: 14px; overflow-x: auto; overflow-y: hidden; padding: 3px 0 8px; outline: 0; overscroll-behavior-inline: contain; scroll-snap-type: x proximity; scrollbar-width: none; }
 .top-row::-webkit-scrollbar { display: none; }
-.top-row a { position: relative; flex: 0 0 91px; }
+.top-row a { position: relative; display: block; flex: 0 0 91px; height: 82px; scroll-snap-align: start; }
 .top-row img { width: 82px; height: 82px; }
 .top-row span { position: absolute; opacity: 0; pointer-events: none; }
 
