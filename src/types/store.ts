@@ -1,109 +1,78 @@
-export type Photo = {
-  src: string;
-  alt: string;
-  position?: string;
-  colour?: ProductColour;
-};
-
 export type Product = {
   id: string;
   slug: string;
   name: string;
-  description?: string;
   price: number;
   originalPrice?: number;
-  photo: Photo;
-  stock?: number;
-  details?: ProductDetails;
-};
-
-export type Fabric = "modal" | "chiffon" | "jersey" | "silk" | (string & {});
-export type ProductCategory = "hijabs" | "accessories" | (string & {});
-export type ProductColour =
-  | "rose"
-  | "olive"
-  | "black"
-  | "sand"
-  | "mocha"
-  | "mauve"
-  | "burgundy"
-  | "multi"
-  | "gold"
-  | (string & {});
-
-export type ProductVariant = {
-  colour: ProductColour;
+  fabric: string;
+  colour: string;
+  image: string;
+  alt: string;
+  badge?: string;
+  category: "Hijabs" | "Abayas" | "Prayer Sets" | "Accessories";
+  sizes: string[];
   stock: number;
-  gallery: [Photo, ...Photo[]];
-};
-
-export type ProductDetails = {
+  rating: number;
   description: string;
-  material: string;
-  size: string;
-  deliveryNote: string;
-  variants: [ProductVariant, ...ProductVariant[]];
+  gallery: string[];
 };
 
-export type CatalogProduct = Product & {
-  category: ProductCategory;
-  fabric: Fabric | null;
-  colour: ProductColour;
-  addedAt: string;
-  details: ProductDetails;
+export type Collection = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  tone: "blue" | "red" | "sky";
+  productIds: string[];
 };
 
 export type Story = {
-  id: string;
   label: string;
-  photo: Photo;
-  avatar: Photo;
-  videoSrc?: string;
-  href?: string;
+  image: string;
+  alt: string;
 };
 
-export type Category = { id: string; name: string; photo: Photo; href: string };
-export type NavItem = { label: string; href?: string; feature?: string };
-
-export type FacebookPixelConfig = {
-  pixelId: string;
-  enabled: boolean;
-  testMode?: boolean;
-  lastVerifiedAt?: string | null;
+export type CartItem = { productId: string; quantity: number; size: string; colour: string };
+export type OrderStatus = "Pending" | "Confirmed" | "Processing" | "Shipped" | "Delivered" | "Cancelled" | "Returned";
+export type PaymentMethod = "cod" | "bkash" | "nagad";
+export type Order = {
+  id: string;
+  customer: { name: string; phone: string; email?: string; address: string; city: string };
+  items: Array<CartItem & { name: string; price: number }>;
+  deliveryZone: "inside-dhaka" | "outside-dhaka";
+  paymentMethod: PaymentMethod;
+  transactionId?: string;
+  subtotal: number;
+  discount: number;
+  shippingFee: number;
+  total: number;
+  status: OrderStatus;
+  paymentStatus: "Pending" | "Paid" | "Failed";
+  createdAt: string;
+  courierTrackingCode?: string;
 };
 
-export type CourierProvider = "steadfast" | "pathao";
-
-export type CourierConfig = {
-  provider: CourierProvider;
-  enabled: boolean;
-  steadfastApiKey?: string;
-  steadfastSecretKey?: string;
-  pathaoClientId?: string;
-  pathaoClientSecret?: string;
-  pathaoUsername?: string;
-  pathaoPassword?: string;
-  pathaoStoreId?: string;
-  autoFraudCheck: boolean;
-  testMode?: boolean;
+export type StoreSettings = {
+  storeName: string;
+  supportPhone: string;
+  supportEmail: string;
+  warehouseAddress: string;
+  insideDhakaFee: number;
+  outsideDhakaFee: number;
+  freeShippingThreshold: number;
+  facebookPixelId: string;
+  steadfastApiKey: string;
+  steadfastSecretKey: string;
 };
 
-export type FraudCheckResult = {
+export type CustomerAccount = {
+  id: string;
+  name: string;
+  email: string;
   phone: string;
-  riskLevel: "safe" | "moderate" | "high" | "unknown";
-  successRate?: number; // e.g. 92%
-  totalParcels?: number;
-  deliveredParcels?: number;
-  cancelledParcels?: number;
-  returnedParcels?: number;
-  totalOrders?: number;
-  totalCancelled?: number;
-  storeOrdersCount?: number;
-  storeDeliveredCount?: number;
-  storeCancelledCount?: number;
-  courierTotalOrders?: number;
-  courierSuccessOrders?: number;
-  courierCancelledOrders?: number;
-  notes?: string;
-  source: "steadfast" | "pathao" | "internal" | "combined";
+  address?: string;
+  passwordHash: string;
+  createdAt: string;
 };
+
+export type StoreSnapshot = { products: Product[]; orders: Order[]; customers: CustomerAccount[]; settings: StoreSettings };

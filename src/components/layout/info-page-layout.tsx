@@ -1,0 +1,1 @@
+export function InfoPageLayout({ eyebrow, title, intro, children }: { eyebrow: string; title: string; intro: string; children: React.ReactNode }) { return <main className="shell page-space info-page"><header><span>{eyebrow}</span><h1>{title}</h1><p>{intro}</p></header><article>{children}</article></main>; }

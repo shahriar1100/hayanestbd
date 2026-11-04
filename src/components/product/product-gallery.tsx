@@ -1,26 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { ProductVariant } from "@/types/store";
-import { ProductPhoto } from "./product-photo";
+import { useMemo, useState } from "react";
+import type { Product } from "@/types/store";
 
-export function ProductGallery({ photos, name }: { photos: ProductVariant["gallery"]; name: string }) {
-  const [prevPhotos, setPrevPhotos] = useState(photos);
-  const [index, setIndex] = useState(0);
+export function ProductGallery({ product }: { product: Product }) {
+  const images = useMemo(() => Array.from(new Set([product.image, ...product.gallery])), [product]);
+  const [active, setActive] = useState(0);
+  const move = (direction: number) => setActive((current) => (current + direction + images.length) % images.length);
 
-  if (photos !== prevPhotos) {
-    setPrevPhotos(photos);
-    setIndex(0);
-  }
-
-  const photo = photos[index] ?? photos[0];
-
-  return <section className="product-gallery" aria-label={`${name} image gallery`}>
-    <div className="product-gallery-main">
-      <ProductPhoto key={photo.src} photo={photo} loading="eager" sizes="(min-width: 1328px) 570px, (min-width: 768px) 46vw, 100vw" />
-      {photos.length > 1 && <div className="product-gallery-navigation"><button type="button" className="icon-button" aria-label="Previous image" onClick={() => setIndex((index + photos.length - 1) % photos.length)}><ChevronLeft aria-hidden="true" /></button><span aria-live="polite" aria-atomic="true"><span className="sr-only">Image </span>{index + 1} / {photos.length}</span><button type="button" className="icon-button" aria-label="Next image" onClick={() => setIndex((index + 1) % photos.length)}><ChevronRight aria-hidden="true" /></button></div>}
+  return <section className="product-gallery" aria-label={`${product.name} photos`}>
+    <div className="product-gallery-stage">
+      <img src={images[active]} alt={`${product.name} view ${active + 1}`} />
+      {images.length > 1 && <div className="gallery-counter"><button type="button" onClick={() => move(-1)} aria-label="Previous photo"><ChevronLeft /></button><span>{active + 1} / {images.length}</span><button type="button" onClick={() => move(1)} aria-label="Next photo"><ChevronRight /></button></div>}
     </div>
-    {photos.length > 1 && <div className="product-thumbnails" role="group" aria-label="Choose product image">{photos.map((photo, photoIndex) => <button type="button" className="product-thumbnail" key={`${photo.src}-${photoIndex}`} aria-label={`View image ${photoIndex + 1}: ${photo.alt}`} aria-pressed={photoIndex === index} onClick={() => setIndex(photoIndex)}><ProductPhoto photo={photo} sizes="80px" /></button>)}</div>}
+    <div className="product-thumbnails">{images.map((image, index) => <button type="button" className={active === index ? "active" : ""} onClick={() => setActive(index)} aria-label={`Show photo ${index + 1}`} aria-pressed={active === index} key={`${image}-${index}`}><img src={image} alt="" /></button>)}</div>
   </section>;
 }

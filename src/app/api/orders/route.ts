@@ -1,53 +1,7 @@
-import { NextResponse } from "next/server";
-import type { Order } from "@/lib/orders";
-import { getStoreOrdersByCustomer, recordCustomerOrder } from "@/lib/server/store-repository";
-import { sendOrderConfirmationEmail, sendAdminNewOrderNotification } from "@/lib/server/email";
+import { createOrder, getSnapshot } from "@/lib/server/store-repository";
+import { isBangladeshPhone } from "@/lib/orders";
+import { sendOrderEmails } from "@/lib/server/email";
+import type { CartItem, Order, PaymentMethod } from "@/types/store";
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const rawIds = searchParams.get("ids") ?? "";
-    const phone = searchParams.get("phone") ?? undefined;
-    const email = searchParams.get("email") ?? undefined;
-
-    const ids = rawIds
-      .split(",")
-      .map((id) => id.trim())
-      .filter(Boolean);
-
-    if (ids.length === 0 && !phone && !email) {
-      return NextResponse.json({ ok: true, orders: [] });
-    }
-
-    const orders = await getStoreOrdersByCustomer({ ids, phone, email });
-    return NextResponse.json({ ok: true, orders });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to retrieve orders.";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const order = (await request.json()) as Order;
-    if (!order?.id || !order?.customer?.name || !order?.customer?.phone) {
-      return NextResponse.json({ error: "Invalid order payload." }, { status: 400 });
-    }
-    const result = await recordCustomerOrder(order);
-
-    // Trigger confirmation email in the background without blocking the checkout response
-    if (order.customer?.email && order.customer.email.includes("@")) {
-      void sendOrderConfirmationEmail({ order, to: order.customer.email }).catch(() => {});
-    }
-    void sendAdminNewOrderNotification({ order }).catch(() => {});
-
-    return NextResponse.json({ ok: true, ...result });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to record order.";
-    const isStockError =
-      message.toLowerCase().includes("stock") ||
-      message.toLowerCase().includes("unavailable") ||
-      message.includes("স্টক");
-    return NextResponse.json({ error: message }, { status: isStockError ? 400 : 500 });
-  }
-}
+export async function GET(request: Request) { const phone = new URL(request.url).searchParams.get("phone")?.replace(/\D/g, ""); if (!phone) return Response.json({ error: "Phone is required" }, { status: 400 }); const snapshot = await getSnapshot(); return Response.json({ orders: snapshot.orders.filter((o) => o.customer.phone.replace(/\D/g, "").endsWith(phone.slice(-11))).map(({ customer, ...order }) => ({ ...order, customer: { name: customer.name } })) }); }
+export async function POST(request: Request) { try { const body = await request.json() as { customer?: Order["customer"]; items?: CartItem[]; deliveryZone?: Order["deliveryZone"]; paymentMethod?: PaymentMethod; transactionId?: string; coupon?: string }; if (!body.customer || !isBangladeshPhone(body.customer.phone) || body.customer.address.trim().length < 8) return Response.json({ error: "A valid Bangladesh phone number and delivery address are required." }, { status: 422 }); if (!body.items?.length) return Response.json({ error: "Your bag is empty." }, { status: 422 }); const snapshot = await getSnapshot(); const rows = body.items.map((item) => { const product = snapshot.products.find((p) => p.id === item.productId); if (!product || item.quantity < 1 || item.quantity > Math.min(10, product.stock)) throw new Error("A product or quantity is no longer available."); return { ...item, name: product.name, price: product.price }; }); const subtotal = rows.reduce((sum, row) => sum + row.price * row.quantity, 0); const discount = body.coupon?.toUpperCase() === "HAYA10" ? Math.round(subtotal * .1) : 0; const shippingFee = subtotal >= snapshot.settings.freeShippingThreshold ? 0 : body.deliveryZone === "outside-dhaka" ? snapshot.settings.outsideDhakaFee : snapshot.settings.insideDhakaFee; if (body.paymentMethod !== "cod" && !body.transactionId?.trim()) return Response.json({ error: "Transaction ID is required for mobile payment." }, { status: 422 }); const order = await createOrder({ customer: body.customer, items: rows, deliveryZone: body.deliveryZone || "inside-dhaka", paymentMethod: body.paymentMethod || "cod", transactionId: body.transactionId?.trim(), subtotal, discount, shippingFee, total: subtotal - discount + shippingFee }); void sendOrderEmails(order); return Response.json({ order }, { status: 201 }); } catch (error) { return Response.json({ error: error instanceof Error ? error.message : "Order could not be created." }, { status: 400 }); } }

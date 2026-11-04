@@ -1,42 +1,12 @@
+import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
-import { getBackendConfig } from "./env";
-
-export const ADMIN_COOKIE_NAME = "noor_admin_session";
-
-function signToken(email: string): string {
-  const { adminSecret } = getBackendConfig();
-  const payload = Buffer.from(JSON.stringify({ email, role: "admin" })).toString("base64url");
-  const signature = createHmac("sha256", adminSecret).update(payload).digest("base64url");
-  return `${payload}.${signature}`;
-}
-
-export function verifyAdminToken(token: string | undefined): { email: string } | null {
-  if (!token || !token.includes(".")) return null;
-  const [payload, signature] = token.split(".");
-  if (!payload || !signature) return null;
-
-  const { adminSecret, adminEmail } = getBackendConfig();
-  const expectedSig = createHmac("sha256", adminSecret).update(payload).digest("base64url");
-
-  try {
-    const a = Buffer.from(signature);
-    const b = Buffer.from(expectedSig);
-    if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { email?: string };
-    if (!parsed.email || parsed.email.toLowerCase() !== adminEmail.toLowerCase()) return null;
-    return { email: parsed.email };
-  } catch {
-    return null;
-  }
-}
-
-export async function getAdminSession(): Promise<{ email: string } | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
-  return verifyAdminToken(token);
-}
-
-export function createAdminSessionToken(email: string): string {
-  return signToken(email);
-}
+const COOKIE = "haya-admin";
+function secret() { return process.env.ADMIN_SESSION_SECRET || "development-only-change-me"; }
+function sign(value: string) { return createHmac("sha256", secret()).update(value).digest("hex"); }
+export function createAdminToken() { const payload = `${Date.now() + 1000 * 60 * 60 * 8}`; return `${payload}.${sign(payload)}`; }
+export function verifyAdminToken(token?: string) { if (!token) return false; const [expires, signature] = token.split("."); if (!expires || !signature || Number(expires) < Date.now()) return false; const expected = sign(expires); return expected.length === signature.length && timingSafeEqual(Buffer.from(expected), Buffer.from(signature)); }
+export async function isAdmin() { return verifyAdminToken((await cookies()).get(COOKIE)?.value); }
+export async function setAdminSession() { (await cookies()).set(COOKIE, createAdminToken(), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 60 * 60 * 8, path: "/" }); }
+export async function clearAdminSession() { (await cookies()).delete(COOKIE); }
+export function validAdminCredentials(email: string, password: string) { const configuredEmail = process.env.ADMIN_EMAIL || (process.env.NODE_ENV === "production" ? "" : "admin@hayanest.com"); const configuredPassword = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === "production" ? "" : "change-me-now"); return Boolean(configuredEmail && configuredPassword) && email === configuredEmail && password === configuredPassword; }

@@ -1,16 +1,2 @@
 import type { MetadataRoute } from "next";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") || "https://noor-hijab.com";
-
-export default function robots(): MetadataRoute.Robots {
-  return {
-    rules: [
-      {
-        userAgent: "*",
-        allow: "/",
-        disallow: ["/admin", "/api/", "/checkout", "/cart", "/account"],
-      },
-    ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
-  };
-}
+export default function robots(): MetadataRoute.Robots { const base=process.env.NEXT_PUBLIC_SITE_URL||"http://localhost:3000"; return { rules:{userAgent:"*",allow:"/",disallow:["/admin","/api/"]},sitemap:`${base}/sitemap.xml` }; }

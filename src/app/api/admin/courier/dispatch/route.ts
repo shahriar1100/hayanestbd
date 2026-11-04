@@ -1,23 +1,4 @@
-import { NextResponse } from "next/server";
-import { dispatchOrderToCourier } from "@/lib/server/courier";
-
-export async function POST(request: Request) {
-  try {
-    const body = (await request.json().catch(() => ({}))) as { orderId?: string };
-    const orderId = body.orderId?.trim();
-
-    if (!orderId) {
-      return NextResponse.json({ error: "Order ID is required." }, { status: 400 });
-    }
-
-    const result = await dispatchOrderToCourier(orderId);
-    if (!result.ok) {
-      return NextResponse.json({ ok: false, message: result.message }, { status: 400 });
-    }
-
-    return NextResponse.json(result);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to dispatch order to courier.";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
-  }
-}
+import { isAdmin } from "@/lib/server/admin-auth";
+import { dispatchToSteadfast } from "@/lib/server/courier";
+import { getSnapshot, updateOrder } from "@/lib/server/store-repository";
+export async function POST(request: Request) { if (!await isAdmin()) return Response.json({ error: "Unauthorized" }, { status: 401 }); const { orderId } = await request.json() as { orderId?: string }; const snapshot = await getSnapshot(); const order = snapshot.orders.find((o) => o.id === orderId); if (!order) return Response.json({ error: "Order not found" }, { status: 404 }); try { const result = await dispatchToSteadfast(order, snapshot.settings.steadfastApiKey || process.env.STEADFAST_API_KEY, snapshot.settings.steadfastSecretKey || process.env.STEADFAST_SECRET_KEY); const updated = await updateOrder(order.id, { status: "Shipped", courierTrackingCode: result.tracking_code || String(result.consignment_id) }); return Response.json({ order: updated, courier: result }); } catch (error) { return Response.json({ error: error instanceof Error ? error.message : "Dispatch failed" }, { status: 502 }); } }

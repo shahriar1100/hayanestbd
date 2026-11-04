@@ -1,45 +1,15 @@
-import type { Product } from "@/types/store";
-import { formatPrice } from "@/data/store";
+"use client";
 import Link from "next/link";
-import { ProductPhoto } from "./product-photo";
-import { SaveProductButton } from "./save-product-button";
-import { ProductCardActions } from "./product-card-actions";
+import { Heart } from "lucide-react";
+import { useCart } from "@/components/cart/cart-provider";
+import { useSaved } from "@/components/saved/saved-provider";
+import { formatPrice } from "@/data/store";
+import type { Product } from "@/types/store";
 
-export function ProductCard({ product, variant = "standard", caption, id, onSavedChange }: { product: Product; variant?: "standard" | "compact" | "sale" | "catalog"; caption?: string; id?: string; onSavedChange?: (id: string, saved: boolean) => void }) {
-  const discount = product.originalPrice ? Math.round((1 - product.price / product.originalPrice) * 100) : 0;
-  const totalStock =
-    typeof product.stock === "number"
-      ? product.stock
-      : product.details?.variants
-        ? product.details.variants.reduce((sum, v) => sum + Math.max(0, Number(v.stock ?? 0)), 0)
-        : undefined;
-  const isOutOfStock = totalStock !== undefined && totalStock <= 0;
-
-  return (
-    <article id={id} data-product-id={product.id} className={`product-card product-card-${variant}`}>
-      <Link href={`/products/${product.slug}`} className="product-link" aria-label={`View ${product.name}, ${formatPrice(product.price)}${discount ? `, ${discount}% off` : ""}`}>
-        <span className="product-image">
-          <ProductPhoto photo={product.photo} sizes={variant === "catalog" ? "(min-width: 1328px) 230px, (min-width: 1024px) 19vw, (min-width: 768px) 30vw, 47vw" : variant === "sale" ? "(min-width: 1328px) 190px, (min-width: 1024px) 15vw, (min-width: 768px) 30vw, 31vw" : "(min-width: 1328px) 288px, (min-width: 1024px) 23vw, (min-width: 768px) 30vw, 47vw"} />
-          {isOutOfStock ? (
-            <span className="discount-badge" style={{ background: "#dc2626" }}>Out of Stock</span>
-          ) : (
-            discount > 0 && <span className="discount-badge">-{discount}%</span>
-          )}
-        </span>
-        <span className="product-details">
-          <span className="product-header-row">
-            <span className="product-name">{product.name}</span>
-            <span className="product-prices">
-              <span className="current-price">{formatPrice(product.price)}</span>
-              {product.originalPrice && <del className="original-price"><span className="sr-only">Original price </span>{formatPrice(product.originalPrice)}</del>}
-            </span>
-          </span>
-          {caption && <span className="product-caption">{caption}</span>}
-          {product.description && <span className="product-short-desc">{product.description}</span>}
-        </span>
-      </Link>
-      <SaveProductButton productId={product.id} name={product.name} onToggle={onSavedChange} />
-      <ProductCardActions productId={product.id} name={product.name} outOfStock={isOutOfStock} />
-    </article>
-  );
+export function ProductCard({ product }: { product: Product }) {
+  const { add, setOpen } = useCart();
+  const { isSaved, toggle } = useSaved();
+  const saved = isSaved(product.id);
+  function addToCart(open: boolean) { add({ productId: product.id, quantity: 1, size: product.sizes[0], colour: product.colour }); if (open) setOpen(true); }
+  return <article className="product-card"><div className="product-media"><Link href={`/products/${product.slug}`}><img src={product.image} alt={product.alt} loading="lazy" /></Link>{product.badge && <span className="product-badge">{product.badge}</span>}<button className={`save-product ${saved ? "is-saved" : ""}`} onClick={() => toggle(product.id)} aria-label={saved ? `Remove ${product.name} from saved products` : `Save ${product.name}`} aria-pressed={saved}><Heart size={15} fill={saved ? "currentColor" : "none"} /></button></div><div className="product-copy"><div className="product-title-row"><h3><Link href={`/products/${product.slug}`}>{product.name}</Link></h3><strong>{formatPrice(product.price)}</strong></div><p>{product.fabric} · {product.colour} · ★ {product.rating}</p>{product.originalPrice && <span className="old-price">{formatPrice(product.originalPrice)}</span>}<div className="card-actions"><button onClick={() => addToCart(true)}>Add to Cart</button><button className="buy-btn" onClick={() => addToCart(true)}>Buy Now <span>→</span></button></div></div></article>;
 }

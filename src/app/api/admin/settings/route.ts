@@ -1,28 +1,5 @@
-import { NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/server/admin-auth";
-import {
-  getStoreSettings,
-  updateStoreSettings,
-  type AdminSettingsRecord,
-} from "@/lib/server/store-repository";
-
-export async function GET() {
-  const session = await getAdminSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const settings = await getStoreSettings();
-  return NextResponse.json({ settings });
-}
-
-export async function PATCH(request: Request) {
-  const session = await getAdminSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  try {
-    const patch = (await request.json()) as Partial<AdminSettingsRecord>;
-    const settings = await updateStoreSettings(patch);
-    return NextResponse.json({ settings });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to update settings.";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
+import { isAdmin } from "@/lib/server/admin-auth";
+import { getSnapshot, updateSettings } from "@/lib/server/store-repository";
+import type { StoreSettings } from "@/types/store";
+export async function GET() { if (!await isAdmin()) return Response.json({ error: "Unauthorized" }, { status: 401 }); return Response.json({ settings: (await getSnapshot()).settings }); }
+export async function PATCH(request: Request) { if (!await isAdmin()) return Response.json({ error: "Unauthorized" }, { status: 401 }); const body = await request.json() as Partial<StoreSettings>; const allowed: Partial<StoreSettings> = {}; for (const key of ["storeName","supportPhone","supportEmail","warehouseAddress","insideDhakaFee","outsideDhakaFee","freeShippingThreshold","facebookPixelId","steadfastApiKey","steadfastSecretKey"] as const) if (body[key] !== undefined) Object.assign(allowed, { [key]: body[key] }); return Response.json({ settings: await updateSettings(allowed) }); }

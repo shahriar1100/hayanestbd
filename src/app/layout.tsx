@@ -1,40 +1,13 @@
-import type { Metadata, Viewport } from "next";
-import { ComingSoonNotice } from "@/components/ui/coming-soon";
-import { CartDrawer } from "@/components/cart/cart-drawer";
-import { StorefrontMotion } from "@/components/ui/motion-reveal";
-import { FacebookPixelTracker } from "@/components/analytics/facebook-pixel";
-import { getStoreSettings } from "@/lib/server/store-repository";
-import { themeInitScript } from "@/lib/theme";
+import type { Metadata } from "next";
 import "./globals.css";
+import { CartProvider } from "@/components/cart/cart-provider";
+import { SavedProvider } from "@/components/saved/saved-provider";
 
 export const metadata: Metadata = {
-  title: "NOOR | Everyday Elegance",
-  description: "Discover everyday elegance with NOOR. A curated collection of modal, chiffon, jersey and silk hijabs in beautiful, timeless colours.",
+  title: "Haya Nest — Modest, made modern",
+  description: "A modern Bangladesh modest-wear storefront for refined hijabs and everyday essentials.",
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#ffffff" };
-
-export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const settings = await getStoreSettings().catch(() => null);
-
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{ __html: themeInitScript }}
-          suppressHydrationWarning
-        />
-      </head>
-      <body suppressHydrationWarning>
-        <a href="#main-content" className="skip-link">
-          Skip to content
-        </a>
-        {children}
-        <StorefrontMotion />
-        <CartDrawer />
-        <ComingSoonNotice />
-        <FacebookPixelTracker pixelConfig={settings?.facebookPixel} />
-      </body>
-    </html>
-  );
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <html lang="en" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{ __html: `try{document.documentElement.dataset.theme=localStorage.getItem('haya-theme')||'dark'}catch(e){}` }} /></head><body><SavedProvider><CartProvider>{children}</CartProvider></SavedProvider></body></html>;
 }

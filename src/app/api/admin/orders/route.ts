@@ -1,49 +1,5 @@
-import { NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/server/admin-auth";
-import {
-  getAllStoreOrders,
-  updateStoreOrder,
-  type AdminDeliveryStatus,
-  type AdminOrderStatus,
-  type AdminPaymentStatus,
-} from "@/lib/server/store-repository";
-
-export async function GET() {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const orders = await getAllStoreOrders();
-  return NextResponse.json({ orders });
-}
-
-export async function PATCH(request: Request) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    const body = (await request.json()) as {
-      id?: string;
-      status?: AdminOrderStatus;
-      paymentStatus?: AdminPaymentStatus;
-      deliveryStatus?: AdminDeliveryStatus;
-      refundAmount?: number;
-    };
-    if (!body.id) {
-      return NextResponse.json({ error: "Order ID is required." }, { status: 400 });
-    }
-    const result = await updateStoreOrder({
-      id: body.id,
-      status: body.status,
-      paymentStatus: body.paymentStatus,
-      deliveryStatus: body.deliveryStatus,
-      refundAmount: body.refundAmount,
-    });
-    return NextResponse.json(result);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to update order.";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
+import { isAdmin } from "@/lib/server/admin-auth";
+import { getSnapshot, updateOrder } from "@/lib/server/store-repository";
+import type { OrderStatus } from "@/types/store";
+export async function GET(){if(!await isAdmin())return Response.json({error:"Unauthorized"},{status:401});return Response.json({orders:(await getSnapshot()).orders})}
+export async function PATCH(request:Request){if(!await isAdmin())return Response.json({error:"Unauthorized"},{status:401});const {id,status}=await request.json() as {id?:string;status?:OrderStatus};if(!id||!status||!["Pending","Confirmed","Processing","Shipped","Delivered","Cancelled","Returned"].includes(status))return Response.json({error:"Invalid order update"},{status:422});const order=await updateOrder(id,{status});return order?Response.json({order}):Response.json({error:"Not found"},{status:404})}

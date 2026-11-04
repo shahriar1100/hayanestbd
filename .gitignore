@@ -1,13 +1,8 @@
 node_modules/
 .next/
-out/
 .env*
 !.env.example
 *.tsbuildinfo
-next-env.d.ts
 .DS_Store
-/.qa/
-/output/
-/data/runtime-store.json
+/data/store.json
 /public/uploads/
-
